@@ -82,7 +82,7 @@ def respond(user_input):
         ]
 
         if not any(liga in user_input.lower() for liga in ligas):
-            return "Para consultar goleadores necesito que indiques una liga. Ejemplo: goleadores de la Liga MX."
+            return "Para consultar goleadores necesito que indiques una liga."
 
         data = get_top_scorers(league_id)
         return format_top_scorers(data)
