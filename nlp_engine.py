@@ -3,13 +3,17 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 
+#Descargamos las stopwords en español de NLTK
 nltk.download("stopwords", quiet=True)
 
+#descargamos el modelo de lenguaje en español de spaCy
 nlp = spacy.load("es_core_news_sm")
 
+#conjunto de palabras vacías (stopwords) y el stemmer para español
 stop_words = set(stopwords.words("spanish"))
 stemmer = SnowballStemmer("spanish")
 
+#Diccionarios para mapear nombres de ligas y equipos a sus IDs en la API-Football
 INTENT_KEYWORDS = {
     "clasificacion": [
         "tabla", "clasificación", "clasificacion", "posición",
