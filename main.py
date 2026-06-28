@@ -1,12 +1,12 @@
 from chatbot import respond
 
-print("Chatbot de Fútbol — escribe 'salir' para terminar\n")
+print("⚽ Chatbot de Fútbol con IA Basada en Conocimiento\n")
 
 while True:
     user_input = input("Tú: ").strip()
 
     if user_input.lower() in ["salir", "exit", "quit"]:
-        print("Hasta luego!")
+        print("👋 Hasta luego!")
         break
 
     if not user_input:

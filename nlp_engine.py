@@ -1,111 +1,54 @@
-import spacy
-import nltk
-from nltk.corpus import stopwords
-from nltk.stem import SnowballStemmer
+import re
 
-#Descargamos las stopwords en español de NLTK
-nltk.download("stopwords", quiet=True)
-
-#descargamos el modelo de lenguaje en español de spaCy
-nlp = spacy.load("es_core_news_sm")
-
-#conjunto de palabras vacías (stopwords) y el stemmer para español
-stop_words = set(stopwords.words("spanish"))
-stemmer = SnowballStemmer("spanish")
-
-#Diccionarios para mapear nombres de ligas y equipos a sus IDs en la API-Football
 INTENT_KEYWORDS = {
-    "clasificacion": [
-        "tabla", "clasificación", "clasificacion", "posición",
-        "posicion", "lugar", "puesto", "standings"
-    ],
-    "partidos": [
-        "partido", "partidos", "juego", "juegos", "fixture",
-        "próximo", "proximo", "cuándo", "cuando", "juega"
-    ],
-    "goleadores": [
-        "goleador", "goleadores", "gol", "goles",
-        "scorer", "máximo", "maximo", "anotador"
-    ],
-    "en_vivo": [
-        "vivo", "ahora", "live", "jugando", "curso"
-    ],
-    "equipos": [
-        "equipo", "equipos", "club", "teams"
-    ],
+    "clasificacion": ["tabla", "clasificación", "posicion", "standings"],
+    "partidos": ["partido", "juega", "fixture"],
+    "goleadores": ["gol", "goleador"],
+    "en_vivo": ["vivo", "live", "ahora"]
 }
 
 LEAGUE_MAP = {
     "premier": 39,
-    "premier league": 39,
     "la liga": 140,
-    "liga española": 140,
-    "champions": 2,
-    "champions league": 2,
     "liga mx": 262,
-    "liga mexicana": 262,
-    "bundesliga": 78,
-    "serie a": 135,
-    "ligue 1": 61,
+    "champions": 2
 }
 
 TEAM_MAP = {
-    "real madrid": 541,
     "barcelona": 529,
-    "manchester city": 50,
-    "manchester united": 33,
+    "real madrid": 541,
     "liverpool": 40,
-    "arsenal": 42,
-    "chelsea": 49,
-    "tottenham": 47,
-    "juventus": 496,
-    "milan": 489,
-    "inter": 505,
     "psg": 85,
-    "bayern munich": 157,
-    "borussia dortmund": 165,
-    "america": 1772,
-    "chivas": 1773,
-    "tigres": 1403,
-    "monterrey": 2282,
-    "pumas": 1921,
-    "cruz azul": 1771
+    "bayern": 157
 }
 
-def preprocess(text):
-    words = text.lower().split()
-    return [stemmer.stem(w) for w in words if w not in stop_words]
 
 def detect_intent(text):
-    doc = nlp(text.lower())
+    text = text.lower()
 
-    lemmas = {token.lemma_ for token in doc}
-    stems = set(preprocess(text))
-    words = set(text.lower().split())
-
-    combined = lemmas | stems | words
-
-    for intent, keywords in INTENT_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in combined:
+    for intent, words in INTENT_KEYWORDS.items():
+        for w in words:
+            if w in text:
                 return intent
 
     return "desconocido"
 
+
 def detect_league(text):
-    text_lower = text.lower()
+    text = text.lower()
 
-    for name, league_id in LEAGUE_MAP.items():
-        if name in text_lower:
-            return league_id
+    for name, id_ in LEAGUE_MAP.items():
+        if name in text:
+            return id_
 
-    return 39
+    return None
+
 
 def detect_team(text):
-    text_lower = text.lower()
+    text = text.lower()
 
-    for name, team_id in TEAM_MAP.items():
-        if name in text_lower:
-            return team_id
+    for name, id_ in TEAM_MAP.items():
+        if name in text:
+            return id_
 
     return None
