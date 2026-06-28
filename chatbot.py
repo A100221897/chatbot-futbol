@@ -1,4 +1,5 @@
 from nlp_engine import detect_intent, detect_league, detect_team
+
 from api_client import (
     get_standings,
     get_fixtures_by_team,
@@ -6,96 +7,605 @@ from api_client import (
     get_live_fixtures
 )
 
-def format_standings(data):
-    try:
-        standings = data["response"][0]["league"]["standings"][0]
+from database import guardar
 
-        result = "Tabla de posiciones:\n"
+
+
+
+# ==========================================================
+# CONTEXTO DEL SISTEMA
+# Memoria temporal del conocimiento adquirido
+# ==========================================================
+
+
+context = {
+
+    "league": None,
+
+    "team": None
+
+}
+
+
+
+
+
+# ==========================================================
+# ESTILO COMENTARISTA DEPORTIVO
+# Capa de presentación del conocimiento
+# ==========================================================
+
+
+def commentator(text):
+
+    return f"🎙️ Analista deportivo: {text}"
+
+
+
+
+
+
+
+# ==========================================================
+# ANALIZADOR DE TABLA DE POSICIONES
+# ==========================================================
+
+
+def analyze_standings(data):
+
+    try:
+
+
+        response = data.get("response", [])
+
+
+
+        if not response:
+
+            return commentator(
+                "No hay datos de la tabla en este momento."
+            )
+
+
+
+        standings = response[0]["league"]["standings"][0]
+
+
+
+        result = "Tabla de posiciones:\n\n"
+
+
 
         for team in standings[:5]:
-            result += f"{team['rank']}. {team['team']['name']} — {team['points']} pts\n"
 
-        return result
+
+            result += (
+
+                f"{team['rank']}. "
+
+                f"{team['team']['name']} "
+
+                f"— {team['points']} pts\n"
+
+            )
+
+
+
+        top = standings[0]
+
+        second = standings[1]
+
+
+
+        result += (
+
+            f"\nAnálisis: "
+
+            f"{top['team']['name']} lidera la liga "
+
+            f"con {top['points']} puntos, "
+
+            f"seguido por {second['team']['name']}."
+
+        )
+
+
+
+        return commentator(result)
+
+
 
     except Exception:
-        return "No pude obtener la tabla de posiciones."
 
-def format_fixtures(data):
+
+        return commentator(
+            "No se pudo analizar la tabla."
+        )
+
+
+
+
+
+
+
+
+# ==========================================================
+# ANALIZADOR DE PARTIDOS
+# ==========================================================
+
+
+def analyze_fixtures(data):
+
     try:
-        fixtures = data["response"][:3]
+
+
+        fixtures = data.get("response", [])
+
+
 
         if not fixtures:
-            return "No encontré próximos partidos para ese equipo."
 
-        result = "Próximos partidos:\n"
 
-        for match in fixtures:
+            return commentator(
+
+                "No encontré próximos partidos para ese equipo."
+
+            )
+
+
+
+        result = "Próximos partidos:\n\n"
+
+
+
+        for match in fixtures[:3]:
+
+
             home = match["teams"]["home"]["name"]
+
             away = match["teams"]["away"]["name"]
+
+
             date = match["fixture"]["date"][:10]
 
-            result += f"{home} vs {away} — {date}\n"
 
-        return result
+
+            result += (
+
+                f"{home} vs {away}"
+
+                f" — {date}\n"
+
+            )
+
+
+
+        first = fixtures[0]
+
+
+        return commentator(
+
+            result +
+
+            "\nEl próximo encuentro promete intensidad."
+
+        )
+
+
 
     except Exception:
-        return "No pude obtener los próximos partidos."
 
-def format_top_scorers(data):
+
+        return commentator(
+
+            "No se pudieron analizar los partidos."
+
+        )
+
+
+
+
+
+
+
+
+# ==========================================================
+# ANALIZADOR DE GOLEADORES
+# ==========================================================
+
+
+def analyze_scorers(data):
+
     try:
-        scorers = data["response"][:5]
+
+
+        scorers = data.get("response", [])
+
+
 
         if not scorers:
-            return "No encontré goleadores para esa liga."
 
-        result = "Top goleadores:\n"
 
-        for scorer in scorers:
+            return commentator(
+
+                "No hay goleadores disponibles."
+
+            )
+
+
+
+        result = "Top goleadores:\n\n"
+
+
+
+        for scorer in scorers[:5]:
+
+
             name = scorer["player"]["name"]
+
+
             goals = scorer["statistics"][0]["goals"]["total"]
 
-            result += f"{name} — {goals} goles\n"
 
-        return result
+
+            result += (
+
+                f"{name} "
+
+                f"— {goals} goles\n"
+
+            )
+
+
+
+        player = scorers[0]
+
+
+
+        return commentator(
+
+            result +
+
+            f"\nJugador destacado: "
+
+            f"{player['player']['name']}"
+
+        )
+
+
 
     except Exception:
-        return "No pude obtener la lista de goleadores."
 
-def respond(user_input):
-    intent = detect_intent(user_input)
-    league_id = detect_league(user_input)
-    team_id = detect_team(user_input)
+
+        return commentator(
+
+            "No se pudieron analizar los goleadores."
+
+        )
+
+
+
+
+
+
+
+
+# ==========================================================
+# ANALIZADOR PARTIDOS EN VIVO
+# ==========================================================
+
+
+def analyze_live(count):
+
+
+    if count == 0:
+
+
+        return commentator(
+
+            "No hay partidos en vivo en este momento."
+
+        )
+
+
+
+    return commentator(
+
+        f"Hay {count} partidos en vivo ahora mismo."
+
+    )
+
+
+
+
+
+
+
+
+
+# ==========================================================
+# MOTOR PRINCIPAL DE INFERENCIA
+# Entrada → Procesamiento → Respuesta → Aprendizaje
+# ==========================================================
+
+
+def respond(message):
+
+
+
+    # Detectar intención del usuario
+
+    intent = detect_intent(message)
+
+
+
+    # Obtener entidades
+
+    league = detect_league(message)
+
+    team = detect_team(message)
+
+
+
+
+
+    # Actualización del conocimiento temporal
+
+
+    if league:
+
+        context["league"] = league
+
+
+
+    if team:
+
+        context["team"] = team
+
+
+
+
+
+
+    # Valores por defecto
+
+
+    league = context["league"] or 39
+
+    team = context["team"]
+
+
+
+
+
+
+
+    # ======================================================
+    # REGLAS DEL SISTEMA
+    # ======================================================
+
 
     if intent == "clasificacion":
-        data = get_standings(league_id)
-        return format_standings(data)
 
-    elif intent == "partidos" and team_id:
-        data = get_fixtures_by_team(team_id)
-        return format_fixtures(data)
+
+
+        data = get_standings(
+
+            league
+
+        )
+
+
+
+        response = analyze_standings(
+
+            data
+
+        )
+
+
+
+
+
+
+
+    elif intent == "partidos":
+
+
+
+        if not team:
+
+
+
+            response = commentator(
+
+                "Dime un equipo para analizar sus partidos."
+
+            )
+
+
+
+        else:
+
+
+
+            data = get_fixtures_by_team(
+
+                team
+
+            )
+
+
+
+            response = analyze_fixtures(
+
+                data
+
+            )
+
+
+
+
+
+
+
 
     elif intent == "goleadores":
-        ligas = [
-            "premier", "premier league", "la liga", "liga española",
-            "champions", "champions league", "liga mx", "liga mexicana",
-            "bundesliga", "serie a", "ligue 1"
+
+
+
+
+        ligas_validas = [
+
+
+            "premier",
+
+            "premier league",
+
+            "la liga",
+
+            "liga española",
+
+            "champions",
+
+            "champions league",
+
+            "liga mx",
+
+            "liga mexicana",
+
+            "bundesliga",
+
+            "serie a",
+
+            "ligue 1"
+
+
         ]
 
-        if not any(liga in user_input.lower() for liga in ligas):
-            return "Para consultar goleadores necesito que indiques una liga."
 
-        data = get_top_scorers(league_id)
-        return format_top_scorers(data)
+
+
+
+        if not any(
+
+            liga in message.lower()
+
+            for liga in ligas_validas
+
+        ):
+
+
+
+            response = commentator(
+
+                "Para consultar goleadores necesito que indiques una liga."
+
+            )
+
+
+
+        else:
+
+
+
+            data = get_top_scorers(
+
+                league
+
+            )
+
+
+
+            response = analyze_scorers(
+
+                data
+
+            )
+
+
+
+
+
+
+
 
     elif intent == "en_vivo":
+
+
+
         data = get_live_fixtures()
-        count = len(data.get("response", []))
-        return f"Hay {count} partidos en vivo ahora mismo."
+
+
+
+        count = len(
+
+            data.get("response", [])
+
+        )
+
+
+
+        response = analyze_live(
+
+            count
+
+        )
+
+
+
+
+
+
+
 
     else:
-        return """No entendí tu pregunta.
-Puedes preguntarme sobre:
-- Tabla de posiciones: tabla de la Premier
-- Próximos partidos: cuándo juega el Barcelona
-- Goleadores: goleadores de la Champions
-- Partidos en vivo: hay partidos en vivo"""
+
+
+
+        response = commentator(
+
+            """
+
+No entendí tu pregunta.
+
+Puedo analizar:
+
+- Tabla de posiciones
+- Próximos partidos
+- Goleadores
+- Partidos en vivo
+
+Ejemplos:
+
+"Tabla de la Premier"
+
+"Cuándo juega Barcelona"
+
+"Goleadores de Champions"
+
+"Hay partidos en vivo"
+
+"""
+
+        )
+
+
+
+
+
+
+
+    # Guardar interacción
+
+    guardar(
+
+        message,
+
+        response
+
+    )
+
+
+
+    return response
